@@ -1,0 +1,158 @@
+local math_floor = math.floor
+local math_sqrt = math.sqrt
+local math_min = math.min
+local math_abs = math.abs
+local ui_get = ui.get
+local ui_set = ui.set
+local ui_ref = ui.reference
+local ui_hotkey = ui.new_hotkey
+local client_console_cmd = client.exec
+local client_delay_call = client.delay_call
+local get_player_name = entity.get_player_name
+local get_classname = entity.get_classname
+local get_local_player = entity.get_local_player
+local globals_realtime = globals.realtime
+local globals_tickcount = globals.tickcount
+local globals_tickinterval = globals.tickinterval
+local globals_frametime = globals.frametime
+local globals_absoluteframetime = globals.absoluteframetime
+local table_insert = table.insert
+local table_remove = table.remove
+-- Duks gay
+local legitbotimprovements = ui.new_checkbox("MISC", "Miscellaneous", "Legitbot Improvements")
+local legitaa = ui.new_checkbox("MISC", "Miscellaneous", "Legit AA")
+
+
+local ref_ping = ui.new_slider("MISC", "Miscellaneous", "Ping", 1, 300, 300, true, "")
+local ref_fps = ui.new_slider("MISC", "Miscellaneous", "FPS", 1, 120, 120, true, "")
+local aa_on = false
+local ref_yaw = ui.reference("AA", "Anti-aimbot angles", "yaw")
+local ref_yaw_base = ui.reference("AA", "Anti-aimbot angles", "yaw base")
+local aim_key = ui_hotkey("MISC", "Miscellaneous", "Aimkey")
+local ref_aimbot_enabled = ui.reference("RAGE", "Aimbot", "Enabled")
+local s_latency = client.latency
+local frametimes = {}
+local fps_prev = 0
+local last_update_time = 0
+local lowfps = false
+local highping = false
+local function checkbox_changed()
+    local enabled = ui.get(legitbotimprovements)
+	ui.set_visible(legitaa, enabled)
+	
+end
+ui.set_callback(legitbotimprovements, checkbox_changed)
+local function legitaa_changed()
+local enabled2 = ui.get(legitaa)
+ui.set_visible(aim_key, enabled2)
+	ui.set_visible(ref_ping, enabled2)
+	ui.set_visible(ref_fps, enabled2)
+end
+ui.set_callback(legitaa, legitaa_changed)
+--thx saph for callback shit
+local function accumulate_fps()
+    local rt, ft = globals_realtime(), globals_absoluteframetime()
+
+    if ft > 0 then
+        table_insert(frametimes, 1, ft)
+    end
+
+    local count = #frametimes
+    if count == 0 then
+        return 0
+    end
+
+    local accum = 0
+    local i = 0
+    while accum < 0.5 do
+        i = i + 1
+        accum = accum + frametimes[i]
+        if i >= count then
+            break
+        end
+    end
+    
+    accum = accum / i
+    
+    while i < count do
+        i = i + 1
+        table_remove(frametimes)
+    end
+    
+    local fps = 1 / accum
+    local time_since_update = rt - last_update_time
+    if math_abs(fps - fps_prev) > 4 or time_since_update > 1 then
+        fps_prev = fps
+        last_update_time = rt
+    else
+        fps = fps_prev
+    end
+    
+    return math_floor(fps + 0.5)
+end
+
+local function on_paint(ctx)
+
+if ui_get(legitbotimprovements) then
+
+local local_entindex = get_local_player()
+	local local_weapon = entity.get_player_weapon(local_entindex)
+	local weapon_name = get_classname(local_weapon)
+local width, height = client.screen_size()
+	if weapon_name == "CWeaponAWP" or  weapon_name == "CDEagle" or weapon_name == "CWeaponElite" or weapon_name == "CWeaponSSG08" or weapon_name == "CWeaponGlock" or weapon_name == "CWeaponHKP2000" or weapon_name == "CWeaponCZ75" or weapon_name == "CWeaponUSP" or weapon_name == "CWeaponP250" then
+	aa_on = false
+	ui_set(ref_aimbot_enabled, true)
+	client.draw_text(ctx, 10, height - 500, 170, 0, 255, 255, "+", 0, "Silent")
+	else
+	aa_on = true
+	end
+	
+	
+	
+	 if (aa_on == true) then
+	 if ui_get(aim_key) then
+	 client.draw_text(ctx, 10, height - 500, 255, 0, 0, 255, "+", 0, "Legit")
+	 ui_set(ref_yaw, "Off")
+	ui_set(ref_yaw_base, "Local view")
+	 ui_set(ref_aimbot_enabled, false)
+	 else 
+	 client.draw_text(ctx, 10, height - 500, 66, 244, 86, 255, "+", 0, "Legit")
+	 ui_set(ref_aimbot_enabled, true)
+	 end
+	end
+	if ui_get(legitaa) then
+	local fps = accumulate_fps()
+fps = math_min(999, fps)
+if (fps < ui_get(ref_fps)) then
+	lowfps = true
+	else
+	lowfps = false
+end
+ping = math_floor(math_min(1000, s_latency()*1000) + 0.5)
+if (ping >= ui_get(ref_ping)) then
+highping = true
+else
+highping = false
+end
+  if ui_get(ref_aimbot_enabled) then
+  
+	if (lowfps) or (highping) then
+	if (highping) then
+	client.draw_text(ctx, 10, height - 580, 255, 0, 0, 255, "+", 0, "High Ping")
+	end
+	if (lowfps) then
+	client.draw_text(ctx, 10, height - 580, 255, 0, 0, 255, "+", 0, "Low FPS")
+	end
+	ui_set(ref_yaw, "Off")
+	ui_set(ref_yaw_base, "Local view")
+	else 
+	ui_set(ref_yaw_base, "At targets")
+	ui_set(ref_yaw, "Sideways")
+	end
+	
+  end
+ end
+ end
+end
+
+client.set_event_callback("paint", on_paint)
